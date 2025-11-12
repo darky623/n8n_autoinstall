@@ -13,7 +13,6 @@
 
 <h2>Требования</h2>
 
- - Сервер VDS/VPS (рекомендуется больше ресурсов: 4+ vCPU, 8+ ГБ ОЗУ и 50+ ГБ SSD)
  - ОС: Ubuntu 22.04+
  - Права: root или sudo
  - Домен/поддомен, указывающий на IP вашего сервера (например, n8n.example.com)
@@ -23,7 +22,7 @@
 <h3>1. Скачайте установочный скрипт</h3>
 
 ```
-wget https://raw.githubusercontent.com/darky623/jitsimeet_auto_install/refs/heads/main/install_jitsi.sh
+wget https://raw.githubusercontent.com/darky623/jitsimeet_auto_install/refs/heads/main/install_n8n.sh
 ```
 
 <h3>2. Настройте переменные</h3>
@@ -31,7 +30,7 @@ wget https://raw.githubusercontent.com/darky623/jitsimeet_auto_install/refs/head
 Откройте файл в редакторе:
 
 ```
-nano install_jitsi.sh
+nano install_n8n.sh
 ```
 
 В начале файла укажите свои значения:
@@ -50,7 +49,7 @@ GENERIC_TIMEZONE="Europe/Moscow"
 <h3>3. Запустите установку</h3>
 
 ```
-sudo bash install_jitsi.sh
+sudo bash install_n8n.sh
 ```
 
 <h2>Что делает скрипт</h2>
