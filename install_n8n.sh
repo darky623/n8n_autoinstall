@@ -80,12 +80,12 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
-      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
-      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
     ports:
       - "80:80"
       - "443:443"
@@ -98,23 +98,26 @@ services:
     restart: always
     depends_on:
       - traefik
-    ports:
-      - "127.0.0.1:5678:5678"
     labels:
       - traefik.enable=true
+      - traefik.http.routers.n8n-http.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n-http.entrypoints=web
+      - traefik.http.routers.n8n-http.middlewares=n8n-redirect
+      - traefik.http.middlewares.n8n-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.n8n-redirect.redirectscheme.permanent=true
       - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n.entrypoints=websecure
       - traefik.http.routers.n8n.tls=true
-      - traefik.http.routers.n8n.entrypoints=web,websecure
-      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
-      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
-      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
-      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
-      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
-      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
-      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
-      - traefik.http.middlewares.n8n.headers.STSPreload=true
-      - traefik.http.routers.n8n.middlewares=n8n@docker
+      - traefik.http.routers.n8n.tls.certresolver=letsencrypt
+      - traefik.http.services.n8n.loadbalancer.server.port=5678
+      - traefik.http.middlewares.n8n-headers.headers.sslredirect=true
+      - traefik.http.middlewares.n8n-headers.headers.stsseconds=31536000
+      - traefik.http.middlewares.n8n-headers.headers.browserxssfilter=true
+      - traefik.http.middlewares.n8n-headers.headers.contenttypenosniff=true
+      - traefik.http.middlewares.n8n-headers.headers.forcestsheader=true
+      - traefik.http.middlewares.n8n-headers.headers.stsincludesubdomains=true
+      - traefik.http.middlewares.n8n-headers.headers.stspreload=true
+      - traefik.http.routers.n8n.middlewares=n8n-headers
     environment:
       - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
       - N8N_PORT=5678
@@ -144,4 +147,11 @@ echo "Проверяю состояние контейнеров…"
 docker compose -f "${COMPOSE_FILE}" ps
 echo
 echo "✅ Готово! Открой https://${FULL_DOMAIN}"
-echo "Если сертификат не выпустился — проверь DNS записи и доступность портов 80/443."
+echo ""
+echo "📝 Примечания:"
+echo "   - Получение SSL-сертификата может занять 1-2 минуты"
+echo "   - Если видите ошибку 404 или нет сертификата, проверьте логи:"
+echo "     docker compose -f ${COMPOSE_FILE} logs traefik"
+echo "     docker compose -f ${COMPOSE_FILE} logs n8n"
+echo "   - Убедитесь, что DNS ${FULL_DOMAIN} указывает на ${PUB_IP:-этот сервер}"
+echo "   - Порты 80 и 443 должны быть открыты в firewall"
