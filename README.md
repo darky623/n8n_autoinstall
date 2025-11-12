@@ -22,7 +22,7 @@
 <h3>1. Скачайте установочный скрипт</h3>
 
 ```
-wget https://raw.githubusercontent.com/darky623/jitsimeet_auto_install/refs/heads/main/install_n8n.sh
+wget https://raw.githubusercontent.com/darky623/n8n_autoinstall/refs/heads/main/install_n8n.sh
 ```
 
 <h3>2. Настройте переменные</h3>
