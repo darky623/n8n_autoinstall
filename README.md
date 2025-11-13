@@ -38,11 +38,25 @@ n8n Автоустановка
 
 ## Запуск
 
-```bash
-chmod +x install_n8n.sh
-sudo ./install_n8n.sh
+1. Скачайте установочный скрипт
 ```
+wget https://raw.githubusercontent.com/darky623/n8n_autoinstall/refs/heads/main/install_n8n.sh
+```
+3. Отредактируйте настройки
+Откройте файл в nano:
+```
+nano install_n8n.sh
+```
+В начале файла укажите свои значения:
+```
+DOMAIN="n8n.ddns.net"
+```
+Сохраните и закройте файл (Ctrl + X -> Y -> Enter).
 
+3. Запустите установку
+```
+sudo bash install_n8n.sh
+```
 После завершения скрипт выведет домен и данные для подключения к Postgres.
 
 ## Создаваемые файлы и пути
