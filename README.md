@@ -1,77 +1,91 @@
-<h1>n8n Auto-Install</h1>
+n8n Автоустановка
+=================
 
-Автоматическая установка self-hosted версии <a href="https://n8n.io">n8n</a> в Docker на Ubuntu 22.04+ за несколько минут.
-Скрипт разворачивает Traefik в качестве обратного прокси, настраивает HTTPS от Let's Encrypt и запускает n8n в production-режиме.
+Скрипт `install_n8n.sh` автоматизирует развёртывание n8n на сервере с Ubuntu, настраивает Docker, Postgres, обратный прокси на Nginx и выпускает TLS‑сертификат Let's Encrypt.
 
-<h2>Возможности</h2>
+## Требования
 
- - Проверка DNS и подготовка окружения
- - Установка Docker и Docker Compose (через официальный установщик)
- - Создание `.env` и `docker-compose.yml` c Traefik + n8n
- - Автоматический выпуск SSL-сертификата для нужного домена
- - Подготовка каталога для локальных файлов n8n
+- Свежая Ubuntu 22.04/24.04 с root‑доступом или sudo.
+- Порт 80 (HTTP) и 443 (HTTPS) должен быть открыт извне.
+- Зарегистрированный домен, указывающий на IP сервера.
+- Установленный `curl` и возможность выходить в интернет.
 
-<h2>Требования</h2>
+## Что делает скрипт
 
- - ОС: Ubuntu 22.04+
- - Права: root или sudo
- - Домен/поддомен, указывающий на IP вашего сервера (например, n8n.example.com)
+- Обновляет пакеты и ставит зависимости (`Docker`, `docker compose`, `Nginx`, `certbot`).
+- Создаёт директории данных в `/opt/n8n`.
+- Формирует `.env` с параметрами подключения к базе и хосту.
+- Генерирует `docker-compose.yml` для контейнеров `postgres` и `n8n`.
+- Запускает стек командой `docker compose up -d`.
+- Настраивает Nginx как reverse proxy к `127.0.0.1:5678`.
+- Выпускает сертификат Let’s Encrypt для указанного домена.
+- Создаёт `systemd` unit `n8n.service` для автозапуска n8n.
 
-<h2>Установка</h2>
+## Переменные и настройка
 
-<h3>1. Скачайте установочный скрипт</h3>
+Перед запуском отредактируйте блок «CONFIG» в начале скрипта:
 
-```
-wget https://raw.githubusercontent.com/darky623/n8n_autoinstall/refs/heads/main/install_n8n.sh
-```
+| Переменная          | Описание                                  | Значение по умолчанию      |
+|---------------------|-------------------------------------------|-----------------------------|
+| `DOMAIN`            | Ваш домен (обязательно указать)          | `yourdomain.com`           |
+| `N8N_PORT`          | Внутренний порт сервиса n8n              | `5678`                     |
+| `POSTGRES_DB`       | Имя базы Postgres                        | `n8n`                      |
+| `POSTGRES_USER`     | Пользователь базы                        | `n8n`                      |
+| `POSTGRES_PASSWORD` | Пароль базы (генерируется автоматически) | случайный hex из `openssl` |
+| `POSTGRES_PORT`     | Порт Postgres внутри docker сети         | `5432`                     |
 
-<h3>2. Настройте переменные</h3>
+Если нужны дополнительные параметры n8n, добавьте их в блок генерации `.env`.
 
-Откройте файл в редакторе:
+## Запуск
 
-```
-nano install_n8n.sh
-```
-
-В начале файла укажите свои значения:
-
-```
-DOMAIN_NAME="example.com"
-SUBDOMAIN="n8n"
-SSL_EMAIL="user@example.com"
-GENERIC_TIMEZONE="Europe/Moscow"
-```
-
-> Если хотите использовать домен без поддомена, оставьте `SUBDOMAIN=""`.
-
-Сохраните изменения (Ctrl + X → Y → Enter).
-
-<h3>3. Запустите установку</h3>
-
-```
-sudo bash install_n8n.sh
+```bash
+chmod +x install_n8n.sh
+sudo ./install_n8n.sh
 ```
 
-<h2>Что делает скрипт</h2>
+После завершения скрипт выведет домен и данные для подключения к Postgres.
 
- - проверяет привязку DNS выбранного домена;
- - устанавливает Docker и docker compose-plugin (если не установлены);
- - создаёт каталог `/opt/n8n` с подготовленным `.env`;
- - генерирует `docker-compose.yml` для Traefik и n8n;
- - открывает порты 80/443 (при наличии UFW);
- - запускает стек `docker compose up -d`.
+## Создаваемые файлы и пути
 
-<h2>После установки</h2>
+- `/.env` и `docker-compose.yml` в `/opt/n8n`.
+- Данные Postgres: `/opt/n8n/postgres`.
+- Данные n8n: `/opt/n8n/n8n`.
+- Конфиг Nginx: `/etc/nginx/sites-available/n8n.conf` (симлинк в `sites-enabled`).
+- Unit-файл: `/etc/systemd/system/n8n.service`.
 
-Через несколько минут n8n будет доступен по адресу:
+## Управление сервисом
 
+```bash
+sudo systemctl status n8n
+sudo systemctl restart n8n
+sudo docker compose -f /opt/n8n/docker-compose.yml logs -f
 ```
-https://<ваш_поддомен>.<ваш_домен>
-```
 
-Если сертификат не выпустился, убедитесь, что DNS-запись указывает на ваш сервер, а порты 80 и 443 открыты. Чтобы просмотреть статус контейнеров, выполните:
+## Обновление n8n
 
-```
+```bash
 cd /opt/n8n
-sudo docker compose ps
+sudo docker compose pull
+sudo systemctl restart n8n
 ```
+
+## Типичные проблемы
+
+- **Certbot не получает сертификат**: проверьте DNS записи домена и открыты ли порты 80/443.
+- **Контейнер не стартует из-за порта**: убедитесь, что `5678` свободен на `localhost`.
+- **n8n недоступен снаружи**: проверьте firewall (`ufw`, `iptables`), а также корректность конфигурации Nginx.
+
+## Удаление
+
+```bash
+sudo systemctl stop n8n
+sudo systemctl disable n8n
+sudo docker compose -f /opt/n8n/docker-compose.yml down -v
+sudo rm -rf /opt/n8n
+sudo rm /etc/nginx/sites-available/n8n.conf /etc/nginx/sites-enabled/n8n.conf
+sudo systemctl reload nginx
+sudo rm /etc/systemd/system/n8n.service
+sudo systemctl daemon-reload
+```
+
+
